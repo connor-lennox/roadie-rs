@@ -10,24 +10,18 @@ struct SampleSet {
 }
 
 /// Provides the directory the presets.ron is in
-fn get_presets_dir() -> PathBuf {
-    [
-        env::current_dir().expect("could not find resources folder").to_str().expect("invalid resources folder path"),
-        "res"
-    ].iter().collect()
+fn get_res_dir() -> PathBuf {
+        env::current_dir().expect("could not find resources folder").join("res")
 }
 
 /// Provides the path to the presets.ron file
 fn get_presets_path() -> PathBuf {
-    [
-        get_presets_dir().to_str().unwrap(),
-        "presets.ron"
-    ].iter().collect()
+    get_res_dir().join("presets.ron")
 }
 
 /// Write a list of presets. Overwrites previous presets file!
 fn write_presets(presets: Vec<SampleSet>) {
-    fs::create_dir_all(get_presets_dir());
+    fs::create_dir_all(get_res_dir());
     fs::write(get_presets_path(), ron::to_string(&presets).unwrap());
 }
 
