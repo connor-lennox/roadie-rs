@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf};
+use std::{fs, env, path::PathBuf};
 
 use serde::{Serialize, Deserialize};
 use clap::{arg, command, Command};
@@ -9,12 +9,38 @@ struct SampleSet {
     samples: [String; 8],
 }
 
+/// Provides the directory the presets.ron is in
+fn get_presets_dir() -> PathBuf {
+    [
+        env::current_dir().expect("could not find resources folder").to_str().expect("invalid resources folder path"),
+        "res"
+    ].iter().collect()
+}
+
+/// Provides the path to the presets.ron file
 fn get_presets_path() -> PathBuf {
     [
-        env::current_dir().expect("could not find presets file").to_str().expect("could not find presets file"),
-        "res",
+        get_presets_dir().to_str().unwrap(),
         "presets.ron"
     ].iter().collect()
+}
+
+/// Write a list of presets. Overwrites previous presets file!
+fn write_presets(presets: Vec<SampleSet>) {
+    fs::create_dir_all(get_presets_dir());
+    fs::write(get_presets_path(), ron::to_string(&presets).unwrap());
+}
+
+/// Read the presets from file.
+fn read_presets() -> Vec<SampleSet> {
+    ron::from_str(&fs::read_to_string(get_presets_path()).expect("could not open presets file")).expect("could not parse presets file")
+}
+
+/// List the presets available in the presets.ron file
+fn list_presets() {
+    for preset in read_presets() {
+        println!("{}: {:?}", preset.name, preset.samples)
+    }
 }
 
 fn main() {
@@ -60,7 +86,7 @@ fn main() {
         Some(("create", _)) => println!("create was used"),
         Some(("preset", sub_matches)) => {
             match sub_matches.subcommand() {
-                Some(("list", _)) => println!("preset list was used"),
+                Some(("list", _)) => list_presets(),
                 Some(("info", sub_matches)) => println!("preset info {:?} was used", sub_matches.value_of("name")),
                 Some(("create", sub_matches)) => println!("preset create {:?} was used", sub_matches.value_of("name")),
                 Some(("delete", sub_matches)) => println!("preset delete {:?} was used", sub_matches.value_of("name")),
@@ -69,9 +95,4 @@ fn main() {
         }
         _ => unreachable!("exhausted list of subcommands")
     }
-
-    let presets_path = get_presets_path();
-    let samples = SampleSet{name: "test".to_string(), samples: ["0".to_string(), "1".to_string(), "2".to_string(), "3".to_string(), "4".to_string(), "5".to_string(), "6".to_string(), "7".to_string()]};
-    println!("{:?}", samples);
-    println!("Presets at: {:?}", presets_path);
 }
