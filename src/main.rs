@@ -1,4 +1,4 @@
-use std::{fs, env, path::PathBuf};
+use std::{io, fs, env, path::PathBuf};
 
 use serde::{Serialize, Deserialize};
 use clap::{arg, command, Command};
@@ -24,6 +24,7 @@ fn get_presets_path() -> PathBuf {
     get_res_dir().join("presets.ron")
 }
 
+/// Returns all samples found in the samples directory recursively.
 fn get_all_samples() -> Vec<String> {
     WalkDir::new(get_samples_root()).into_iter()
         .filter_map(|e| e.ok())
@@ -32,10 +33,34 @@ fn get_all_samples() -> Vec<String> {
         .collect()
 }
 
+/// Print out all available samples, alongside their index.
+fn print_samples(samples: &Vec<String>) {
+    println!("Available Samples:");
+    for (idx, sample) in samples.iter().enumerate() {
+        println!("{}: {}", idx, sample);
+    }
+    println!("----------");
+}
+
 /// Prompts the user to build a SampleSet
 fn build_sample_set(name: String) -> SampleSet {
-    SampleSet { name, samples: ["0".to_string(), "1".to_string(), "2".to_string(), "3".to_string(), "4".to_string(), "5".to_string(), "6".to_string(), "7".to_string()] }
+    let samples = get_all_samples();
+    let mut buf = String::new();
+    print_samples(&samples);
+    println!("Select 8 Samples:");
+    let mut selected: [&str; 8] = Default::default();
+    for i in 0..=7 {
+        buf.clear();
+        io::stdin().read_line(&mut buf).expect("invalid input");
+        let s = buf.trim().parse::<usize>();
+        match s {
+            Ok(idx) => selected[i] = &samples[idx],
+            Err(_) => selected[i] = "",
+        }
+    }
+    SampleSet { name, samples: selected.map(|s| s.to_string()) }
 }
+
 
 /// Write a list of presets. Overwrites previous presets file!
 fn write_presets(presets: Vec<SampleSet>) {
@@ -55,6 +80,13 @@ fn read_presets() -> Vec<SampleSet> {
 fn add_preset(preset: SampleSet) {
     let mut presets = read_presets();
     presets.push(preset);
+    write_presets(presets);
+}
+
+/// Remove a preset from the presets file. Does nothing if the preset does not exist.
+fn delete_preset(name: String) {
+    let mut presets = read_presets();
+    presets = presets.into_iter().filter(|p| p.name != name).collect::<Vec<SampleSet>>();
     write_presets(presets);
 }
 
@@ -114,7 +146,7 @@ fn main() {
                     let samples = build_sample_set(sub_matches.value_of("name").unwrap().to_string());
                     add_preset(samples);
                 },
-                Some(("delete", sub_matches)) => println!("preset delete {:?} was used", sub_matches.value_of("name")),
+                Some(("delete", sub_matches)) => delete_preset(sub_matches.value_of("name").unwrap().to_string()),
                 _ => unreachable!("exhausted list of subcommands")
             }
         }
